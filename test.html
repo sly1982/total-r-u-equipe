@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>TotalEnergies – Team Building DRM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #000;
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #matrixCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .header {
+      margin-top: 16px;
+      margin-bottom: 24px;
+    }
+
+    .header-title {
+      font-weight: 900;
+      font-size: clamp(1.4rem, 5vw, 2rem);
+      color: #ff3b3b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-subtitle {
+      margin-top: 4px;
+      font-weight: 700;
+      font-size: clamp(1rem, 4vw, 1.3rem);
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: rgba(0,0,0,0.7);
+      border-radius: 16px;
+      padding: 16px;
+      max-width: 420px;
+      width: 100%;
+      backdrop-filter: blur(4px);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .code-display {
+      font-family: monospace;
+      font-size: 1.2rem;
+      letter-spacing: 0.3em;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 10px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.03);
+      text-align: center;
+      min-height: 40px;
+    }
+
+    .message {
+      font-size: 0.85rem;
+      min-height: 20px;
+      margin-bottom: 10px;
+    }
+
+    .message.ok { color: #6bff6b; }
+    .message.error { color: #ff5555; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .grid button {
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,0,0.6);
+      background: rgba(0,0,0,0.85);
+      color: #ffe45e;
+      cursor: pointer;
+      aspect-ratio: 1 / 1;
+      transition: 0.1s ease;
+    }
+
+    .grid button:active {
+      transform: scale(0.96);
+      background: rgba(255,255,0,0.1);
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .btn-reset {
+      background: #ff3b3b;
+      color: #fff;
+    }
+
+    .btn-reset:active {
+      transform: scale(0.95);
+      background: #ff5555;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="matrixCanvas"></canvas>
+
+  <div class="overlay">
+    <header class="header">
+      <div class="header-title">TOTAL ENERGIES</div>
+      <div class="header-subtitle">TEAM BUILDING DRM</div>
+    </header>
+
+    <main class="card">
+      <div class="card-title">Saisissez le code secret</div>
+
+      <div id="codeDisplay" class="code-display"></div>
+      <div id="message" class="message">Entrez 3 chiffres avec le cadran.</div>
+
+      <div class="grid" id="keypad">
+        <button data-digit="0">0</button>
+        <button data-digit="1">1</button>
+        <button data-digit="2">2</button>
+        <button data-digit="3">3</button>
+        <button data-digit="4">4</button>
+        <button data-digit="5">5</button>
+        <button data-digit="6">6</button>
+        <button data-digit="7">7</button>
+        <button data-digit="8">8</button>
+        <button data-digit="9">9</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-reset" id="resetBtn">Réinitialiser / Retenter</button>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    /* MATRIX EFFECT */
+    const canvas = document.getElementById("matrixCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    const fontSize = 16;
+    let columns = Math.floor(canvas.width / fontSize);
+    const drops = Array.from({ length: columns }, () => Math.random() * -20);
+    const chars = "0123456789◆◇◼◻◊";
+
+    function drawMatrix() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = fontSize + "px monospace";
+
+      drops.forEach((y, i) => {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillStyle = "#ffd600";
+        ctx.fillText(char, i * fontSize, y * fontSize);
+
+        if (y * fontSize > canvas.height && Math.random() > 0.96) {
+          drops[i] = 0;
+        }
+        drops[i] += 0.6 + Math.random();
+      });
+
+      requestAnimationFrame(drawMatrix);
+    }
+
+    drawMatrix();
+
+    /* CODE LOGIC */
+    const CORRECT_CODE = "980";
+    let currentCode = "";
+
+    const codeDisplay = document.getElementById("codeDisplay");
+    const messageEl = document.getElementById("message");
+    const keypad = document.getElementById("keypad");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function updateDisplay() {
+      codeDisplay.textContent = currentCode.padEnd(3, "_").split("").join(" ");
+    }
+
+    function setMessage(text, type = "") {
+      messageEl.textContent = text;
+      messageEl.className = "message " + type;
+    }
+
+    function resetCode() {
+      currentCode = "";
+      updateDisplay();
+      setMessage("Entrez 3 chiffres avec le cadran.");
+    }
+
+    function checkCode() {
+      if (currentCode === CORRECT_CODE) {
+        setMessage("Code bon.", "ok");
+      } else {
+        setMessage("ERREUR. Retentez.", "error");
+      }
+    }
+
+    keypad.addEventListener("click", e => {
+      const digit = e.target.getAttribute("data-digit");
+      if (!digit) return;
+
+      if (currentCode.length < 3) {
+        currentCode += digit;
+        updateDisplay();
+
+        if (currentCode.length === 3) {
+          checkCode();
+        }
+      }
+    });
+
+    resetBtn.addEventListener("click", resetCode);
+
+    resetCode();
+  </script>
+
+</body>
+</html>
